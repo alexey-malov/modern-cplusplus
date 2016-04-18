@@ -4,6 +4,8 @@
 #include <string>
 #include <algorithm>
 #include <sstream>
+#include <deque>
+#include <chrono>
 
 constexpr auto M_PI = 3.14159265358979323846;
 
@@ -141,7 +143,7 @@ void WorkWithShapes()
 	{
 		cout 
 			<< R"(Type "circle <radius>", )"
-			<< R"("rectangle <width> <height>)"
+			<< R"("rectangle <width> <height>")"
 			<< " or anything else to skip> ";
 
 		auto shape = NaiveLoadShape(cin);
@@ -152,8 +154,6 @@ void WorkWithShapes()
 		cout << shape->ToString() << "\n\n";
 	}
 }
-
-
 
 void SortUpToNStrings(size_t n)
 {
@@ -178,8 +178,83 @@ void SortUpToNStrings(size_t n)
 	delete[] strings;
 }
 
+struct Master;
+
+struct Slave
+{
+	int data;
+	weak_ptr<Master> master;
+};
+
+struct Master
+{
+	int data;
+	shared_ptr<Slave> slave;
+};
+
+struct Foo
+{
+	Foo(int)
+	{
+	}
+	char fill[40];
+};
+
+int DoSomething(); // may throw
+void Fn(unique_ptr<Foo> && foo, int bar);
+
+void MakeUnique()
+{
+	// Возможна утечка памяти, если DoSomething() будет вызвана
+	// между new Foo(42) и unique_ptr и выбросит исключение
+	Fn(unique_ptr<Foo>(new Foo(42)), DoSomething());
+	
+	// Здесь такой проблемы нет
+	Fn(make_unique<Foo>(42), DoSomething());
+}
+
+void Fn(unique_ptr<Foo> && /*foo*/, int /*bar*/)
+{
+}
+
+int DoSomething()
+{
+	return 42;
+}
+
+void Benchmark()
+{
+	deque<shared_ptr<Foo>> foos;
+	using namespace std::chrono;
+	auto start = steady_clock::now();
+
+	try
+	{
+		auto p = make_shared<Foo>(0);
+		for (int i = 0; i < 20'000'000; ++i)
+		{
+			//foos.push_back(shared_ptr<Foo>(new Foo(0)));
+			//foos.push_back(make_shared<Foo>(0));
+			foos.push_back(p);
+		}
+	}
+	catch (const std::exception&)
+	{
+		cout << "Exception" << endl;
+	}
+
+	auto end = steady_clock::now();
+	
+	size_t sz = foos.size();
+	
+	foos.clear();
+	auto cleanupEnd = steady_clock::now();
+	cout << sz << ", " << duration_cast<milliseconds>(end - start).count() << ", " << duration_cast<milliseconds>(cleanupEnd - end).count() << endl;
+}
+
 int main()
 {
+	Benchmark();
 	NaiveWorkWithShapes();
 
 	SortUpToNStrings(5);
