@@ -7,6 +7,9 @@
 #include <iostream>
 #include <atomic>
 #include <cstdint>
+#include <vector>
+#include <iterator>
+#include <string>
 
 using namespace std;
 using namespace std::chrono;
@@ -15,43 +18,44 @@ using boost::none;
 
 class Solver : public enable_shared_from_this<Solver>
 {
-	typedef pair<unsigned, unsigned> Answer;
+	typedef vector<unsigned> Factors;
 	future<void> m_worker;
 	atomic_bool m_cancelled;
-	atomic<Answer*> m_pAnswer;
-	Answer m_answer;
+	atomic<Factors*> m_pResult;
+	Factors m_factors;
 public:
-	void StartSolving(unsigned product)
+	void Factorize(unsigned n)
 	{
 		weak_ptr<Solver> weakSelf = shared_from_this();
-		m_worker = async(launch::async, [=] {
-			unsigned a = 2;
+		m_worker = async(launch::async, [=]() mutable {
+			unsigned factor = 1;
 			do
 			{
-				auto maxB = product / a;
-				for (unsigned b = a; b <= maxB; ++b)
+				auto rem = n % factor;
+				if (rem == 0)
 				{
-					if ((a * b == product))
+					auto self = weakSelf.lock();
+					if (!self)
+						return;
+					m_factors.push_back(factor);
+					n /= factor;
+					if (n == 1)
 					{
-						auto self = weakSelf.lock();
-						if (self)
-						{
-							m_answer = { a, b };
-							m_pAnswer.store(&m_answer);
-						}
+						m_pResult.store(&m_factors);
 						return;
 					}
 				}
-			} while ((a++ != product) 
-				&& (weakSelf.lock() && !m_cancelled));
+				if ((factor == 1) || (rem != 0))
+					++factor;
+			} while ((n >= factor)
+				  && (weakSelf.lock() && !m_cancelled));
 		});
 	}
 
-	optional<Answer> GetAnswer()const
+	Factors GetFactors()const
 	{
-		auto answer = m_pAnswer.load();
-		return answer ? *answer
-					  : optional<Answer>();
+		auto pAnswer = m_pResult.load();
+		return pAnswer ? *pAnswer : Factors();
 	}
 
 	~Solver()
@@ -68,18 +72,19 @@ int main()
 {
 	auto solver = make_shared<Solver>();
 
-	auto n = 16411 * 27449;
+	auto n = 1'983'872'491;;//1'983'872'491;//961'748'941;//1'983'872'491;
 	cout << "Searching for prime factors of " << n << endl;
-	solver->StartSolving(n);
+	solver->Factorize(n);
 	
 	string line;
 	do
 	{
-		auto answer = solver->GetAnswer();
-		if (answer)
+		auto factors = solver->GetFactors();
+		if (!factors.empty())
 		{
-			cout << "Factors are: " << answer->first << " and " 
-				<< answer->second << endl;
+			cout << "Factors are: \n";
+			copy(factors.begin(), factors.end(), ostream_iterator<unsigned>(cout, " "));
+			cout << endl;
 			return 0;
 		}
 		cout << "Still no answer. Should I cancel (y)?";
