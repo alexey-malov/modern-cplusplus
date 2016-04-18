@@ -1,9 +1,5 @@
 ﻿#include <memory>
 #include <future>
-#include <mutex>
-#include <thread>
-#include <boost/optional.hpp>
-#include <chrono>
 #include <iostream>
 #include <atomic>
 #include <cstdint>
@@ -13,15 +9,13 @@
 
 using namespace std;
 using namespace std::chrono;
-using boost::optional;
-using boost::none;
 
 class Solver : public enable_shared_from_this<Solver>
 {
 	typedef vector<unsigned> Factors;
 	future<void> m_worker;
 	atomic_bool m_cancelled;
-	atomic<Factors*> m_pResult;
+	atomic_bool m_solved;
 	Factors m_factors;
 public:
 	void Factorize(unsigned n)
@@ -41,7 +35,7 @@ public:
 					n /= factor;
 					if (n == 1)
 					{
-						m_pResult.store(&m_factors);
+						m_solved = true;
 						return;
 					}
 				}
@@ -54,11 +48,10 @@ public:
 
 	Factors GetFactors()const
 	{
-		auto pAnswer = m_pResult.load();
-		return pAnswer ? *pAnswer : Factors();
+		return m_solved ? m_factors : Factors();
 	}
 
-	~Solver()
+	void Cancel()
 	{
 		m_cancelled = true;
 		if (m_worker.valid())
@@ -72,7 +65,7 @@ int main()
 {
 	auto solver = make_shared<Solver>();
 
-	auto n = 1'983'872'491;;//1'983'872'491;//961'748'941;//1'983'872'491;
+	auto n = 1'983'872'491;
 	cout << "Searching for prime factors of " << n << endl;
 	solver->Factorize(n);
 	
@@ -91,6 +84,6 @@ int main()
 	} while (getline(cin, line) && (line != "y"));
 
 	cout << "Failed to solve the problem. Exiting" << endl;
-
+	//solver->Cancel();
 	return 1;
 }
