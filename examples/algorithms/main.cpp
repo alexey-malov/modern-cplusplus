@@ -238,6 +238,16 @@ BOOST_FIXTURE_TEST_SUITE(A_Layer, A_Layer_)
 			layer->InsertSublayerAtIndex(sublayerD, 0);
 			BOOST_REQUIRE(GetSublayers(*layer) == 
 				Layers({sublayerD, sublayerA, sublayerB, sublayerC}));
+
+			// DABC => ABCD
+			layer->InsertSublayerAtIndex(sublayerD, 4);
+			BOOST_REQUIRE(GetSublayers(*layer) ==
+				Layers({ sublayerA, sublayerB, sublayerC, sublayerD }));
+
+			// ABCD => BCAD
+			layer->InsertSublayerAtIndex(sublayerA, 3);
+			BOOST_REQUIRE(GetSublayers(*layer) ==
+				Layers({ sublayerB, sublayerC, sublayerA, sublayerD }));
 		}
 	BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE_END()

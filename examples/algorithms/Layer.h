@@ -42,7 +42,7 @@ public:
 		}
 		else // Just move the layer
 		{
-			if (index >= m_sublayers.size())
+			if (index > m_sublayers.size())
 			{
 				throw std::out_of_range("Index is out of range");
 			}
@@ -51,6 +51,11 @@ public:
 			{
 				m_sublayers.insert(m_sublayers.begin() + index, layer);
 				m_sublayers.erase(m_sublayers.begin() + curPos + 1);
+			}
+			else
+			{
+				m_sublayers.insert(m_sublayers.begin() + index, layer);
+				m_sublayers.erase(m_sublayers.begin() + curPos);
 			}
 		}
 	}
