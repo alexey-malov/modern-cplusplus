@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <vector>
+#include <algorithm>
 
 class Layer;
 typedef std::shared_ptr<Layer> LayerPtr;
@@ -22,9 +23,9 @@ public:
 	{
 	}
 
-	void AddSublayer(const LayerPtr& subLayer)
+	void AddSublayer(const LayerPtr& layer)
 	{
-		InsertSublayerAtIndex(subLayer, m_sublayers.size());
+		InsertSublayerAtIndex(layer, m_sublayers.size());
 	}
 
 	LayerPtr GetSuperlayer()const
@@ -32,10 +33,26 @@ public:
 		return m_superlayer.lock();
 	}
 
-	void InsertSublayerAtIndex(const LayerPtr & sublayer, size_t index)
+	void InsertSublayerAtIndex(const LayerPtr & layer, size_t index)
 	{
-		sublayer->m_superlayer = shared_from_this();
-		m_sublayers.push_back(sublayer);
+		if (layer->GetSuperlayer().get() != this)
+		{
+			m_sublayers.insert(m_sublayers.begin() + index, layer);
+			layer->m_superlayer = shared_from_this();
+		}
+		else // Just move the layer
+		{
+			if (index >= m_sublayers.size())
+			{
+				throw std::out_of_range("Index is out of range");
+			}
+			size_t curPos = find(m_sublayers.begin(), m_sublayers.end(), layer) - m_sublayers.begin();
+			if (index < curPos)
+			{
+				m_sublayers.insert(m_sublayers.begin() + index, layer);
+				m_sublayers.erase(m_sublayers.begin() + curPos + 1);
+			}
+		}
 	}
 
 	LayerPtr GetSublayer(size_t index)const

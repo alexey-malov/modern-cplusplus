@@ -13,15 +13,8 @@
 
 #include <boost/algorithm/string/replace.hpp>
 
-//#define BOOST_TEST_MODULE MyTestModule
 #define BOOST_TEST_NO_MAIN 
 #define BOOST_TEST_ALTERNATIVE_INIT_API 
-//#define BOOST_TEST_MODULE MyTestModule
-#pragma warning (disable: 4702)
-#pragma warning (push, 3)
-#include <boost/test/unit_test.hpp>
-#pragma warning (pop)
-
 #pragma warning (push, 3)
 #include <boost/test/included/unit_test.hpp>
 #pragma warning (pop)
@@ -150,10 +143,33 @@ bool init_unit_test()
 	return true;
 }
 
+namespace
+{
+typedef vector<LayerPtr> Layers;
+
 struct A_Layer_
 {
 	const LayerPtr layer = make_shared<Layer>();
+	const LayerPtr sublayer = make_shared<Layer>();
+
+	const LayerPtr sublayerA = make_shared<Layer>();
+	const LayerPtr sublayerB = make_shared<Layer>();
+	const LayerPtr sublayerC = make_shared<Layer>();
+	const LayerPtr sublayerD = make_shared<Layer>();
 };
+
+Layers GetSublayers(const Layer& layer)
+{
+	Layers sublayers;
+	const size_t n = layer.GetSublayerCount();
+	for (size_t i = 0; i < n; ++i)
+	{
+		sublayers.push_back(layer.GetSublayer(i));
+	}
+	return sublayers;
+}
+
+}
 
 BOOST_FIXTURE_TEST_SUITE(A_Layer, A_Layer_)
 	BOOST_AUTO_TEST_SUITE(when_created)
@@ -169,13 +185,12 @@ BOOST_FIXTURE_TEST_SUITE(A_Layer, A_Layer_)
 	
 	struct A_Layer_with_one_sublayer_ : A_Layer_
 	{
-		const LayerPtr sublayer = make_shared<Layer>();
 		A_Layer_with_one_sublayer_()
 		{
 			layer->AddSublayer(sublayer);
 		}
 	};
-	BOOST_FIXTURE_TEST_SUITE(after_adding_a_sublayer, A_Layer_with_one_sublayer_)
+	BOOST_FIXTURE_TEST_SUITE(when_adding_a_sublayer, A_Layer_with_one_sublayer_)
 		BOOST_AUTO_TEST_CASE(contains_one_sublayer)
 		{
 			BOOST_CHECK_EQUAL(layer->GetSublayerCount(), 1u);
@@ -187,6 +202,42 @@ BOOST_FIXTURE_TEST_SUITE(A_Layer, A_Layer_)
 		BOOST_AUTO_TEST_CASE(contains_the_added_sublayer_at_index_0)
 		{
 			BOOST_CHECK_EQUAL(layer->GetSublayer(0), sublayer);
+		}
+		BOOST_AUTO_TEST_CASE(forbids_getting_a_sublayer_by_wrong_index)
+		{
+			BOOST_CHECK_THROW((void)&layer->GetSublayer(1);, out_of_range);
+		}
+		BOOST_AUTO_TEST_CASE(shifts_subsequent_sublayers)
+		{
+			auto frontSublayer = make_shared<Layer>();
+
+			layer->InsertSublayerAtIndex(frontSublayer, 0);
+
+			BOOST_REQUIRE(GetSublayers(*layer) == Layers({ frontSublayer, sublayer }));
+
+			auto middleSublayer = make_shared<Layer>();
+			layer->InsertSublayerAtIndex(middleSublayer, 1);
+			BOOST_REQUIRE(GetSublayers(*layer) == Layers({ frontSublayer, middleSublayer, sublayer }));
+		}
+	BOOST_AUTO_TEST_SUITE_END()
+
+	struct A_Layer_with_several_sublayers : A_Layer_
+	{
+		A_Layer_with_several_sublayers()
+		{
+			layer->AddSublayer(sublayerA);
+			layer->AddSublayer(sublayerB);
+			layer->AddSublayer(sublayerC);
+			layer->AddSublayer(sublayerD);
+		}
+	};
+	BOOST_FIXTURE_TEST_SUITE(when_adding_the_existing_sublayer, A_Layer_with_several_sublayers)
+		BOOST_AUTO_TEST_CASE(moves_it_to_the_destination_position)
+		{
+			// ABCD => DABC
+			layer->InsertSublayerAtIndex(sublayerD, 0);
+			BOOST_REQUIRE(GetSublayers(*layer) == 
+				Layers({sublayerD, sublayerA, sublayerB, sublayerC}));
 		}
 	BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE_END()
