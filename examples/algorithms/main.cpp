@@ -278,7 +278,7 @@ BOOST_FIXTURE_TEST_SUITE(A_Layer, A_Layer_)
 			BOOST_REQUIRE(GetSublayers(*layer) == 
 				Layers({sublayerD, sublayerA, sublayerB, sublayerC}));
 
-			// DABC => ABCD
+			// [D]ABC => ABC[D]
 			BOOST_REQUIRE_NO_THROW(layer->InsertSublayerAtIndex(sublayerD, 4));
 			BOOST_REQUIRE(GetSublayers(*layer) ==
 				Layers({ sublayerA, sublayerB, sublayerC, sublayerD }));

@@ -105,7 +105,6 @@ public:
 		if (oldOwner.get() != this)
 		{
 			m_sublayers.insert(m_sublayers.begin() + insertPos, layer);
-
 			if (oldOwner)
 			{				
 				auto & oldSiblings = oldOwner->m_sublayers;
@@ -115,34 +114,21 @@ public:
 		}
 		else // Это наш собственный слой
 		{
-			size_t layerPos;
-			for (layerPos = 0; layerPos < m_sublayers.size(); ++layerPos)
-			{
-				if (m_sublayers[layerPos] == layer)
-				{
-					break;
-				}
-			}
-			assert(layerPos < m_sublayers.size());
+			auto first = boost::find(m_sublayers, layer);
+			auto last = first + 1;
+			auto pos = m_sublayers.begin() + insertPos;
 
-			if (insertPos < layerPos)
+			if (pos < first)
 			{
-				for (; layerPos > insertPos; --layerPos)
-				{
-					m_sublayers[layerPos] = m_sublayers[layerPos - 1];
-				}
+				rotate(pos, first, last);
 			}
-			else
+			else if (last < pos)
 			{
-				for (; layerPos + 1 < insertPos; ++layerPos)
-				{
-					m_sublayers[layerPos] = m_sublayers[layerPos + 1];
-				}
+				rotate(first, last, pos);
 			}
-			m_sublayers[layerPos] = layer;
 		}
 	}
-
+	
 	void RemoveFromSuperlayer()
 	{
 		auto superlayer = GetSuperlayer();
