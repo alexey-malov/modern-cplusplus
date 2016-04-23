@@ -92,9 +92,6 @@ public:
 
 			if (insertPos < layerPos)
 			{
-				//m_sublayers.insert(m_sublayers.begin() + insertPos, layer);
-				//m_sublayers.erase(m_sublayers.begin() + layerPos + 1);
-				//*
 				for (; layerPos > insertPos; --layerPos)
 				{
 					m_sublayers[layerPos] = m_sublayers[layerPos - 1];
@@ -102,8 +99,6 @@ public:
 			}
 			else
 			{
-				//m_sublayers.insert(m_sublayers.begin() + insertPos, layer);
-				//m_sublayers.erase(m_sublayers.begin() + layerPos);
 				for (; layerPos + 1 < insertPos; ++layerPos)
 				{
 					m_sublayers[layerPos] = m_sublayers[layerPos + 1];
