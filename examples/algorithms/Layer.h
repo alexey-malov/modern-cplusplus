@@ -106,16 +106,9 @@ public:
 			m_sublayers.insert(m_sublayers.begin() + insertPos, layer);
 
 			if (oldOwner)
-			{
+			{				
 				auto & oldSiblings = oldOwner->m_sublayers;
-				for (auto it = oldSiblings.begin(); it != oldSiblings.end(); ++it)
-				{
-					if (*it == layer)
-					{
-						oldSiblings.erase(it);
-						break;
-					}
-				}
+				oldSiblings.erase(find(oldSiblings.begin(), oldSiblings.end(), layer));
 			}
 			layer->m_superlayer = self;
 		}
