@@ -3,6 +3,7 @@
 #include <memory>
 #include <vector>
 #include <algorithm>
+#include <iterator>
 
 typedef std::shared_ptr<class Layer> LayerPtr;
 
@@ -11,6 +12,52 @@ class Layer : public std::enable_shared_from_this<Layer>
 	std::weak_ptr<Layer> m_superlayer;
 	std::vector<LayerPtr> m_sublayers;
 public:
+
+	class ParentIterator : public std::iterator<std::input_iterator_tag, LayerPtr>
+	{
+		LayerPtr p;
+	public:
+		ParentIterator(const LayerPtr & p = nullptr)
+			:p(p)
+		{}
+
+		bool operator==(const ParentIterator & rhs)const
+		{
+			return p == rhs.p;
+		}
+		bool operator!=(const ParentIterator & rhs)const
+		{
+			return p != rhs.p;
+		}
+
+		operator bool()const
+		{
+			return p != nullptr;
+		}
+		ParentIterator& operator++()
+		{
+			assert(p);
+			p = p->GetSuperlayer();
+			return *this;
+		}
+		ParentIterator operator++(int)
+		{
+			auto copy(*this);
+			++(*this);
+			return copy;
+		}
+		const LayerPtr& operator*()const
+		{
+			assert(p);
+			return p;
+		}
+		const LayerPtr* operator->()const
+		{
+			assert(p);
+			return &p;
+		}
+	};
+
 	void Draw() const 
 	{
 		// будет переопределен в подклассах
@@ -42,21 +89,15 @@ public:
 		{
 			throw std::invalid_argument("Invalid layer");
 		}
-		if (layer.get() == this)
-		{
-			throw std::invalid_argument("Can't insert itself as a sublayer");
-		}
 		if (insertPos > m_sublayers.size())
 		{
 			throw std::out_of_range("Index is out of range");
 		}
 
-		for (auto parent = GetSuperlayer(); parent; parent = parent->GetSuperlayer())
+		auto self = shared_from_this();
+		if (std::find(ParentIterator(self), ParentIterator(), layer))
 		{
-			if (parent == layer)
-			{
-				throw std::invalid_argument("Can't insert any of own superlayers");
-			}
+			throw std::invalid_argument("Can't insert self of an own superlayer");
 		}
 
 		auto oldOwner = layer->GetSuperlayer();
@@ -76,7 +117,7 @@ public:
 					}
 				}
 			}
-			layer->m_superlayer = shared_from_this();
+			layer->m_superlayer = self;
 		}
 		else // Это наш собственный слой
 		{
