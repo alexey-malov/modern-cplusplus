@@ -231,23 +231,72 @@ BOOST_FIXTURE_TEST_SUITE(A_Layer, A_Layer_)
 			layer->AddSublayer(sublayerD);
 		}
 	};
-	BOOST_FIXTURE_TEST_SUITE(when_adding_the_existing_sublayer, A_Layer_with_several_sublayers)
+	BOOST_FIXTURE_TEST_SUITE(when_adding_own_sublayer, A_Layer_with_several_sublayers)
 		BOOST_AUTO_TEST_CASE(moves_it_to_the_destination_position)
 		{
 			// ABCD => DABC
-			layer->InsertSublayerAtIndex(sublayerD, 0);
+			BOOST_REQUIRE_NO_THROW(layer->InsertSublayerAtIndex(sublayerD, 0));
 			BOOST_REQUIRE(GetSublayers(*layer) == 
 				Layers({sublayerD, sublayerA, sublayerB, sublayerC}));
 
 			// DABC => ABCD
-			layer->InsertSublayerAtIndex(sublayerD, 4);
+			BOOST_REQUIRE_NO_THROW(layer->InsertSublayerAtIndex(sublayerD, 4));
 			BOOST_REQUIRE(GetSublayers(*layer) ==
 				Layers({ sublayerA, sublayerB, sublayerC, sublayerD }));
 
 			// ABCD => BCAD
-			layer->InsertSublayerAtIndex(sublayerA, 3);
+			BOOST_REQUIRE_NO_THROW(layer->InsertSublayerAtIndex(sublayerA, 3));
 			BOOST_REQUIRE(GetSublayers(*layer) ==
 				Layers({ sublayerB, sublayerC, sublayerA, sublayerD }));
+
+			// BC[A]D => BC[A]D
+			BOOST_REQUIRE_NO_THROW(layer->InsertSublayerAtIndex(sublayerA, 2));
+			BOOST_REQUIRE(GetSublayers(*layer) ==
+				Layers({ sublayerB, sublayerC, sublayerA, sublayerD }));
+		}
+	BOOST_AUTO_TEST_SUITE_END()
+	BOOST_AUTO_TEST_SUITE(does_not_allow_inserting)
+		BOOST_AUTO_TEST_CASE(itself_as_its_own_sublayer)
+		{
+			auto sublayers = GetSublayers(*layer);
+			BOOST_REQUIRE_THROW(layer->AddSublayer(layer), invalid_argument);
+			BOOST_CHECK(!layer->GetSuperlayer());
+			BOOST_CHECK(GetSublayers(*layer) == sublayers);
+		}
+		BOOST_AUTO_TEST_CASE(null_layer)
+		{
+			auto sublayers = GetSublayers(*layer);
+			BOOST_REQUIRE_THROW(layer->AddSublayer(nullptr), invalid_argument);
+			BOOST_CHECK(GetSublayers(*layer) == sublayers);
+		}
+	BOOST_AUTO_TEST_SUITE_END()
+
+	struct A_layer_being_a_sublayer_ : A_Layer_
+	{
+		const LayerPtr superLayer = make_shared<Layer>();
+		const LayerPtr topmostLayer = make_shared<Layer>();
+		A_layer_being_a_sublayer_()
+		{
+			superLayer->AddSublayer(layer);
+			topmostLayer->AddSublayer(superLayer);
+		}
+	};
+	BOOST_FIXTURE_TEST_SUITE(being_a_sublayer, A_layer_being_a_sublayer_)
+		BOOST_AUTO_TEST_CASE(can_be_removed_from_parent)
+		{
+			layer->RemoveFromSuperlayer();
+			BOOST_CHECK(!layer->GetSuperlayer());
+			BOOST_CHECK_EQUAL(superLayer->GetSublayerCount(), 0u);
+		}
+		BOOST_AUTO_TEST_CASE(does_not_allow_inserting_any_of_its_superlayers)
+		{
+			BOOST_CHECK_THROW(layer->AddSublayer(superLayer), std::invalid_argument);
+			BOOST_CHECK_EQUAL(layer->GetSuperlayer(), superLayer);
+			BOOST_CHECK_EQUAL(superLayer->GetSuperlayer(), topmostLayer);
+
+			BOOST_CHECK_THROW(layer->AddSublayer(topmostLayer), std::invalid_argument);
+			BOOST_CHECK_EQUAL(layer->GetSuperlayer(), superLayer);
+			BOOST_CHECK(!topmostLayer->GetSuperlayer());
 		}
 	BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE_END()
