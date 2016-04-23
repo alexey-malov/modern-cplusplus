@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include <iterator>
+#include <boost/range/algorithm/find.hpp>
 
 typedef std::shared_ptr<class Layer> LayerPtr;
 
@@ -108,7 +109,7 @@ public:
 			if (oldOwner)
 			{				
 				auto & oldSiblings = oldOwner->m_sublayers;
-				oldSiblings.erase(find(oldSiblings.begin(), oldSiblings.end(), layer));
+				oldSiblings.erase(boost::find(oldSiblings, layer));
 			}
 			layer->m_superlayer = self;
 		}
