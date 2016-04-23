@@ -1,10 +1,9 @@
-#pragma once
+ï»¿#pragma once
 
 #include <memory>
 #include <vector>
 #include <algorithm>
 
-//class Layer;
 typedef std::shared_ptr<class Layer> LayerPtr;
 
 class Layer : public std::enable_shared_from_this<Layer>
@@ -14,7 +13,7 @@ class Layer : public std::enable_shared_from_this<Layer>
 public:
 	void Draw() const 
 	{
-		// áóäåò ïåðåîïðåäåëåí â ïîäêëàññàõ
+		// Ð±ÑƒÐ´ÐµÑ‚ Ð¿ÐµÑ€ÐµÐ¾Ð¿Ñ€ÐµÐ´ÐµÐ»ÐµÐ½ Ð² Ð¿Ð¾Ð´ÐºÐ»Ð°ÑÑÐ°Ñ…
 	}
 
 	void AddSublayer(const LayerPtr& layer)
@@ -47,6 +46,11 @@ public:
 		{
 			throw std::invalid_argument("Can't insert itself as a sublayer");
 		}
+		if (insertPos > m_sublayers.size())
+		{
+			throw std::out_of_range("Index is out of range");
+		}
+
 		for (auto parent = GetSuperlayer(); parent; parent = parent->GetSuperlayer())
 		{
 			if (parent == layer)
@@ -54,17 +58,28 @@ public:
 				throw std::invalid_argument("Can't insert any of own superlayers");
 			}
 		}
-		if (layer->GetSuperlayer().get() != this)
+
+		auto oldOwner = layer->GetSuperlayer();
+		if (oldOwner.get() != this)
 		{
 			m_sublayers.insert(m_sublayers.begin() + insertPos, layer);
+
+			if (oldOwner)
+			{
+				auto & oldSiblings = oldOwner->m_sublayers;
+				for (auto it = oldSiblings.begin(); it != oldSiblings.end(); ++it)
+				{
+					if (*it == layer)
+					{
+						oldSiblings.erase(it);
+						break;
+					}
+				}
+			}
 			layer->m_superlayer = shared_from_this();
 		}
-		else // Ïåðåìåùàåì ñëîé
+		else // Ð­Ñ‚Ð¾ Ð½Ð°Ñˆ ÑÐ¾Ð±ÑÑ‚Ð²ÐµÐ½Ð½Ñ‹Ð¹ ÑÐ»Ð¾Ð¹
 		{
-			if (insertPos > m_sublayers.size())
-			{
-				throw std::out_of_range("Index is out of range");
-			}
 			size_t layerPos;
 			for (layerPos = 0; layerPos < m_sublayers.size(); ++layerPos)
 			{
@@ -75,29 +90,26 @@ public:
 			}
 			assert(layerPos < m_sublayers.size());
 
-
 			if (insertPos < layerPos)
 			{
 				//m_sublayers.insert(m_sublayers.begin() + insertPos, layer);
 				//m_sublayers.erase(m_sublayers.begin() + layerPos + 1);
 				//*
-				for (; layerPos != insertPos; --layerPos)
+				for (; layerPos > insertPos; --layerPos)
 				{
 					m_sublayers[layerPos] = m_sublayers[layerPos - 1];
 				}
-				m_sublayers[layerPos] = layer;
-				//*/
 			}
-			else // (insertPos >= layerPos)
+			else
 			{
 				//m_sublayers.insert(m_sublayers.begin() + insertPos, layer);
 				//m_sublayers.erase(m_sublayers.begin() + layerPos);
-				for (; layerPos < insertPos - 1; ++layerPos)
+				for (; layerPos + 1 < insertPos; ++layerPos)
 				{
 					m_sublayers[layerPos] = m_sublayers[layerPos + 1];
 				}
-				m_sublayers[layerPos] = layer;
 			}
+			m_sublayers[layerPos] = layer;
 		}
 	}
 
@@ -106,11 +118,11 @@ public:
 		auto superlayer = GetSuperlayer();
 		if (superlayer)
 		{
-			auto self = shared_from_this();
 			auto & siblings = superlayer->m_sublayers;
+
 			for (auto it = siblings.begin(); it != siblings.end(); ++it)
 			{
-				if (*it == self)
+				if (it->get() == this)
 				{
 					siblings.erase(it);
 					break;

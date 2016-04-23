@@ -190,17 +190,14 @@ BOOST_FIXTURE_TEST_SUITE(A_Layer, A_Layer_)
 			layer->AddSublayer(sublayer);
 		}
 	};
-	BOOST_FIXTURE_TEST_SUITE(when_adding_a_sublayer, A_Layer_with_one_sublayer_)
-		BOOST_AUTO_TEST_CASE(contains_one_sublayer)
-		{
-			BOOST_CHECK_EQUAL(layer->GetSublayerCount(), 1u);
-		}
+	BOOST_FIXTURE_TEST_SUITE(when_adding_no_ones_sublayer, A_Layer_with_one_sublayer_)
 		BOOST_AUTO_TEST_CASE(becomes_a_superlayer_of_the_added_sublayer)
 		{
 			BOOST_CHECK_EQUAL(layer, sublayer->GetSuperlayer());
 		}
 		BOOST_AUTO_TEST_CASE(contains_the_added_sublayer_at_index_0)
 		{
+			BOOST_CHECK_EQUAL(layer->GetSublayerCount(), 1u);
 			BOOST_CHECK_EQUAL(layer->GetSublayer(0), sublayer);
 		}
 		BOOST_AUTO_TEST_CASE(forbids_getting_a_sublayer_by_wrong_index)
@@ -221,6 +218,28 @@ BOOST_FIXTURE_TEST_SUITE(A_Layer, A_Layer_)
 		}
 	BOOST_AUTO_TEST_SUITE_END()
 
+	struct A_Layer_with_adopted_sublayer : A_Layer_
+	{
+		const LayerPtr oldSuperlayer = make_shared<Layer>();
+		A_Layer_with_adopted_sublayer()
+		{
+			oldSuperlayer->AddSublayer(sublayer);
+			layer->AddSublayer(sublayer);
+		}
+	};
+	BOOST_FIXTURE_TEST_SUITE(when_adding_someones_sublayer, A_Layer_with_adopted_sublayer)
+		BOOST_AUTO_TEST_CASE(removes_it_from_previous_superlayers_children)
+		{
+			BOOST_CHECK_EQUAL(oldSuperlayer->GetSublayerCount(), 0u);
+		}
+		BOOST_AUTO_TEST_CASE(adopts_it_as_a_sublayer)
+		{
+			BOOST_CHECK_EQUAL(sublayer->GetSuperlayer(), layer);
+			BOOST_REQUIRE_EQUAL(layer->GetSublayerCount(), 1u);
+			BOOST_CHECK_EQUAL(layer->GetSublayer(0), sublayer);
+		}
+	BOOST_AUTO_TEST_SUITE_END()
+
 	struct A_Layer_with_several_sublayers : A_Layer_
 	{
 		A_Layer_with_several_sublayers()
@@ -234,6 +253,26 @@ BOOST_FIXTURE_TEST_SUITE(A_Layer, A_Layer_)
 	BOOST_FIXTURE_TEST_SUITE(when_adding_own_sublayer, A_Layer_with_several_sublayers)
 		BOOST_AUTO_TEST_CASE(moves_it_to_the_destination_position)
 		{
+			// [A]BCD => ][ABCD
+			BOOST_REQUIRE_NO_THROW(layer->InsertSublayerAtIndex(sublayerA, 0));
+			BOOST_REQUIRE(GetSublayers(*layer) ==
+				Layers({ sublayerA, sublayerB, sublayerC, sublayerD }));
+
+			// [A]BCD => A][BCD
+			BOOST_REQUIRE_NO_THROW(layer->InsertSublayerAtIndex(sublayerA, 1));
+			BOOST_REQUIRE(GetSublayers(*layer) ==
+				Layers({ sublayerA, sublayerB, sublayerC, sublayerD }));
+
+			// ABC[D] => ABC][D
+			BOOST_REQUIRE_NO_THROW(layer->InsertSublayerAtIndex(sublayerD, 3));
+			BOOST_REQUIRE(GetSublayers(*layer) ==
+				Layers({ sublayerA, sublayerB, sublayerC, sublayerD }));
+
+			// ABC[D] => ABCD][
+			BOOST_REQUIRE_NO_THROW(layer->InsertSublayerAtIndex(sublayerD, 4));
+			BOOST_REQUIRE(GetSublayers(*layer) ==
+				Layers({ sublayerA, sublayerB, sublayerC, sublayerD }));
+
 			// ABCD => DABC
 			BOOST_REQUIRE_NO_THROW(layer->InsertSublayerAtIndex(sublayerD, 0));
 			BOOST_REQUIRE(GetSublayers(*layer) == 
@@ -256,6 +295,13 @@ BOOST_FIXTURE_TEST_SUITE(A_Layer, A_Layer_)
 		}
 	BOOST_AUTO_TEST_SUITE_END()
 	BOOST_AUTO_TEST_SUITE(does_not_allow_inserting)
+		BOOST_AUTO_TEST_CASE(layer_to_improper_position)
+		{
+			auto numSublayers = layer->GetSublayerCount();
+			BOOST_REQUIRE_THROW(layer->InsertSublayerAtIndex(sublayer, numSublayers + 1), out_of_range);
+			BOOST_CHECK(!sublayer->GetSuperlayer());
+			BOOST_REQUIRE_EQUAL(sublayer->GetSublayerCount(), numSublayers);
+		}
 		BOOST_AUTO_TEST_CASE(itself_as_its_own_sublayer)
 		{
 			auto sublayers = GetSublayers(*layer);
