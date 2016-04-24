@@ -8,6 +8,14 @@
 
 typedef std::shared_ptr<class Layer> LayerPtr;
 
+template <typename It>
+std::pair<It, It> slide(const It & first, const It & last, const It & pos)
+{
+	if (pos < first) return { pos, rotate(pos, first, last) };
+	if (last < pos) return { rotate(first, last, pos), pos };
+	return { first, last };
+}
+
 class Layer : public std::enable_shared_from_this<Layer>
 {
 	std::weak_ptr<Layer> m_superlayer;
@@ -114,18 +122,8 @@ public:
 		}
 		else // Это наш собственный слой
 		{
-			auto first = boost::find(m_sublayers, layer);
-			auto last = first + 1;
-			auto pos = m_sublayers.begin() + insertPos;
-
-			if (pos < first)
-			{
-				rotate(pos, first, last);
-			}
-			else if (last < pos)
-			{
-				rotate(first, last, pos);
-			}
+			auto oldPos = boost::find(m_sublayers, layer);
+			slide(oldPos, oldPos + 1, m_sublayers.begin() + insertPos);
 		}
 	}
 	
