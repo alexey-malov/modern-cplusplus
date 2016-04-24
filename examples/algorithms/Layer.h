@@ -18,8 +18,6 @@ std::pair<It, It> slide(const It & first, const It & last, const It & pos)
 
 class Layer : public std::enable_shared_from_this<Layer>
 {
-	std::weak_ptr<Layer> m_superlayer;
-	std::vector<LayerPtr> m_sublayers;
 public:
 
 	class ParentIterator : public std::iterator<std::input_iterator_tag, LayerPtr>
@@ -103,22 +101,15 @@ public:
 			throw std::out_of_range("Index is out of range");
 		}
 
-		auto self = shared_from_this();
+		const auto self = shared_from_this();
 		if (std::find(ParentIterator(self), ParentIterator(), layer))
 		{
 			throw std::invalid_argument("Can't insert self of an own superlayer");
 		}
 
-		auto oldOwner = layer->GetSuperlayer();
-		if (oldOwner.get() != this)
+		if (self != layer->GetSuperlayer())
 		{
-			m_sublayers.insert(m_sublayers.begin() + insertPos, layer);
-			if (oldOwner)
-			{				
-				auto & oldSiblings = oldOwner->m_sublayers;
-				oldSiblings.erase(boost::find(oldSiblings, layer));
-			}
-			layer->m_superlayer = self;
+			AdoptSublayer(layer, insertPos);
 		}
 		else // Это наш собственный слой
 		{
@@ -126,7 +117,7 @@ public:
 			slide(oldPos, oldPos + 1, m_sublayers.begin() + insertPos);
 		}
 	}
-	
+
 	void RemoveFromSuperlayer()
 	{
 		auto superlayer = GetSuperlayer();
@@ -145,4 +136,20 @@ public:
 			m_superlayer.reset();
 		}
 	}
+
+private:
+	void AdoptSublayer(const LayerPtr & layer, size_t insertPos)
+	{
+		m_sublayers.insert(m_sublayers.begin() + insertPos, layer);
+		if (auto oldOwner = layer->GetSuperlayer())
+		{
+			auto & oldSiblings = oldOwner->m_sublayers;
+			oldSiblings.erase(boost::find(oldSiblings, layer));
+		}
+		layer->m_superlayer = shared_from_this();
+	}
+
+	std::weak_ptr<Layer> m_superlayer;
+	std::vector<LayerPtr> m_sublayers;
+
 };
