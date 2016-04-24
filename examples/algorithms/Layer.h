@@ -28,19 +28,10 @@ public:
 			:p(p)
 		{}
 
-		bool operator==(const ParentIterator & rhs)const
-		{
-			return p == rhs.p;
-		}
-		bool operator!=(const ParentIterator & rhs)const
-		{
-			return p != rhs.p;
-		}
+		bool operator==(const ParentIterator & rhs)const { return p == rhs.p; }
+		bool operator!=(const ParentIterator & rhs)const { return p != rhs.p; }
 
-		operator bool()const
-		{
-			return p != nullptr;
-		}
+		operator bool()const { return p != nullptr; }
 		ParentIterator& operator++()
 		{
 			assert(p);
@@ -53,16 +44,8 @@ public:
 			++(*this);
 			return copy;
 		}
-		const LayerPtr& operator*()const
-		{
-			assert(p);
-			return p;
-		}
-		const LayerPtr* operator->()const
-		{
-			assert(p);
-			return &p;
-		}
+		const LayerPtr& operator*()const { assert(p); return p; }
+		const LayerPtr* operator->()const { assert(p); return &p; }
 	};
 
 	void Draw() const 
@@ -100,14 +83,12 @@ public:
 		{
 			throw std::out_of_range("Index is out of range");
 		}
-
-		const auto self = shared_from_this();
-		if (std::find(ParentIterator(self), ParentIterator(), layer))
+		if (HasSuperlayer(layer))
 		{
-			throw std::invalid_argument("Can't insert self of an own superlayer");
+			throw std::invalid_argument("Can't insert self or an own superlayer");
 		}
 
-		if (self != layer->GetSuperlayer())
+		if (this != layer->GetSuperlayer().get())
 		{
 			AdoptSublayer(layer, insertPos);
 		}
@@ -124,6 +105,18 @@ public:
 	}
 
 private:
+	bool HasSuperlayer(const LayerPtr & superlayer)const
+	{
+		for (auto parent = shared_from_this(); parent; parent = parent->GetSuperlayer())
+		{
+			if (parent == superlayer)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
 	void AdoptSublayer(const LayerPtr & layer, size_t insertPos)
 	{
 		m_sublayers.insert(m_sublayers.begin() + insertPos, layer);
