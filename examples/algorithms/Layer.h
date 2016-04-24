@@ -120,24 +120,24 @@ public:
 
 	void RemoveFromSuperlayer()
 	{
-		if (auto superlayer = GetSuperlayer())
-		{
-			auto & siblings = superlayer->m_sublayers;
-			siblings.erase(boost::find(siblings, shared_from_this()));
-			m_superlayer.reset();
-		}
+		MoveToSuperlayer(nullptr);
 	}
 
 private:
 	void AdoptSublayer(const LayerPtr & layer, size_t insertPos)
 	{
 		m_sublayers.insert(m_sublayers.begin() + insertPos, layer);
-		if (auto oldOwner = layer->GetSuperlayer())
+		layer->MoveToSuperlayer(shared_from_this());
+	}
+
+	void MoveToSuperlayer(const LayerPtr & superLayer)
+	{
+		if (auto oldSuperlayer = GetSuperlayer())
 		{
-			auto & oldSiblings = oldOwner->m_sublayers;
-			oldSiblings.erase(boost::find(oldSiblings, layer));
+			auto & siblings = oldSuperlayer->m_sublayers;
+			siblings.erase(boost::find(siblings, shared_from_this()));
 		}
-		layer->m_superlayer = shared_from_this();
+		m_superlayer = superLayer;
 	}
 
 	std::weak_ptr<Layer> m_superlayer;
