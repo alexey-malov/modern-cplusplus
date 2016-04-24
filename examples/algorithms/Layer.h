@@ -109,10 +109,7 @@ private:
 	{
 		for (auto parent = shared_from_this(); parent = parent->GetSuperlayer(); )
 		{
-			if (parent == superlayer)
-			{
-				return true;
-			}
+			if (parent == superlayer) return true;
 		}
 		return false;
 	}
