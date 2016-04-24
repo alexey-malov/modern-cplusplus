@@ -120,19 +120,10 @@ public:
 
 	void RemoveFromSuperlayer()
 	{
-		auto superlayer = GetSuperlayer();
-		if (superlayer)
+		if (auto superlayer = GetSuperlayer())
 		{
 			auto & siblings = superlayer->m_sublayers;
-
-			for (auto it = siblings.begin(); it != siblings.end(); ++it)
-			{
-				if (it->get() == this)
-				{
-					siblings.erase(it);
-					break;
-				}
-			}
+			siblings.erase(boost::find(siblings, shared_from_this()));
 			m_superlayer.reset();
 		}
 	}
