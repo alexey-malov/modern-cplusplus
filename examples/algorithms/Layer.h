@@ -83,7 +83,7 @@ public:
 		{
 			throw std::out_of_range("Index is out of range");
 		}
-		if (HasSuperlayer(layer))
+		if (this == layer.get() || IsSublayerOf(layer))
 		{
 			throw std::invalid_argument("Can't insert self or an own superlayer");
 		}
@@ -105,9 +105,9 @@ public:
 	}
 
 private:
-	bool HasSuperlayer(const LayerPtr & superlayer)const
+	bool IsSublayerOf(const LayerPtr & superlayer)const
 	{
-		for (auto parent = shared_from_this(); parent; parent = parent->GetSuperlayer())
+		for (auto parent = shared_from_this(); parent = parent->GetSuperlayer(); )
 		{
 			if (parent == superlayer)
 			{
